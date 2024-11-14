@@ -39,4 +39,19 @@ class LoginView(APIView):
         return Response(response, status=status.HTTP_200_OK)
 
 
+class VerificationView(APIView):
+    permission_classes = [AllowAny]
+    serializer_class = VerificationSerializer
 
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user_code = serializer.validated_data.get('user_code')
+        if not user_code:
+            return Response({"detail": "user_code is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = user_code.user
+        user.is_active = True
+        user.save()
+        user_code.delete()
+        return Response({"message": "User verified successfully"})
