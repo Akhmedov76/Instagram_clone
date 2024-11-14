@@ -31,3 +31,8 @@ class Like(models.Model):
 
     def __str__(self):
         return f"Like by {self.user.username} on {self.post.title}"
+
+    class Meta:
+        unique_together = ('post', 'user')
+        verbose_name = 'like'
+        verbose_name_plural = 'likes'
