@@ -2,7 +2,7 @@ from django.utils import timezone
 
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate
 from rest_framework.exceptions import ValidationError
 
 from app_accounts.models import UserModel, VerificationModel
@@ -64,3 +64,33 @@ class VerificationSerializer(serializers.ModelSerializer):
         if verification.created_at + timezone.timedelta(minutes=5) < timezone.now():
             verification.delete()
             raise serializers.ValidationError('Verification code has expired.')
+        return attrs
+
+
+class LoginSerializer(serializers.ModelSerializer):
+    email_or_username = serializers.CharField(max_length=250)
+    password = serializers.CharField(max_length=50)
+    error_messages = {'email': ['Invalid email or username.'], 'password': ['Invalid password.']}
+
+    class Meta:
+        model = UserModel
+        fields = ('email_or_username', 'password')
+
+    def validate(self, attrs):
+        email_or_username = attrs.get('email_or_username')
+        password = attrs.get('password')
+
+        try:
+            if email_or_username.endswith('@gmail.com'):
+                user = UserModel.objects.get(email=email_or_username)
+            else:
+                user = UserModel.objects.get(username=email_or_username)
+        except UserModel.DoesNotExist:
+            raise ValidationError(self.error_messages)
+
+        authenticated_user = authenticate(username=user.username, password=password)
+
+        if not authenticated_user:
+            raise ValidationError(self.error_messages)
+
+        return attrs
