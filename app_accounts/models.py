@@ -4,6 +4,7 @@ from django.contrib.auth.models import AbstractUser
 
 class UserModel(AbstractUser):
     email = models.EmailField(unique=True, blank=False, null=False)
+    phone_number = models.CharField(max_length=17)
 
 
 class VerificationModel(models.Model):

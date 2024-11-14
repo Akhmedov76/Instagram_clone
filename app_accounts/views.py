@@ -1,12 +1,15 @@
+from django.utils import timezone
 from rest_framework import status
 from rest_framework import generics
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from app_accounts.models import UserModel
+from app_accounts.models import UserModel, VerificationModel
 from app_accounts.serializers import RegisterSerializers, LoginSerializer, VerificationSerializer
+from .utils import sms_sender
 
 
 class RegistrationView(generics.CreateAPIView):
@@ -19,6 +22,12 @@ class RegistrationView(generics.CreateAPIView):
         user.set_password(serializer.validated_data['password'])
         user.is_active = False
         user.save()
+        phone_number = serializer.validated_data.get('phone_number')
+        message = (f"Hi {user.first_name} {user.last_name}, welcome to our website! Please verify your account."
+                   f" We are sent code your email . ")
+
+        if phone_number:
+            sms_sender(phone_number, message)
         return user
 
 
@@ -46,12 +55,23 @@ class VerificationView(APIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user_code = serializer.validated_data.get('user_code')
-        if not user_code:
-            return Response({"detail": "user_code is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = user_code.user
-        user.is_active = True
-        user.save()
-        user_code.delete()
+        try:
+            verification = VerificationModel.objects.get(
+                code=serializer.validated_data['code']
+            )
+        except VerificationModel.DoesNotExist:
+            return Response({"detail": "Invalid verification code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if verification.created_at + timezone.timedelta(minutes=5) < timezone.now():
+            verification.delete()
+            return Response({"detail": "Verification code has expired."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = verification.user
+
+        if not user.is_active:
+            user.is_active = True
+            user.save()
+
+        verification.delete()
         return Response({"message": "User verified successfully"})

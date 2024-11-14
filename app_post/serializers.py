@@ -39,3 +39,8 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = PostModel
         fields = ['title', 'image', 'caption']
+
+    def create(self, validated_data):
+        author = validated_data.pop('author')
+        post = PostModel.objects.create(author=author, **validated_data)
+        return post

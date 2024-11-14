@@ -27,5 +27,5 @@ def send_verification_email(email):
 @receiver(post_save, sender=UserModel)
 def send_verification_email_after_signup(sender, instance=None, created=False, **kwargs):
     if created:
-        email_thread = threading.Thread(target=send_verification_email, args=(instance.email,))
+        email_thread = threading.Thread(target=send_verification_email, args=(instance.email))
         email_thread.start()

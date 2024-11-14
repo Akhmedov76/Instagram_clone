@@ -5,6 +5,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework.exceptions import ValidationError
 
+from .utils import sms_sender, get_random_verification_code
 from app_accounts.models import UserModel, VerificationModel
 
 User = get_user_model()
@@ -15,11 +16,12 @@ class RegisterSerializers(serializers.ModelSerializer):
 
     class Meta:
         model = UserModel
-        fields = ('id', 'first_name', 'last_name', 'username', 'email', 'password', 'confirm_password')
-        extra_kwargs = {'password': {'write_only': True},
-                        'first_name': {'required': False},
-                        'last_name': {'required': False}
-                        }
+        fields = ('id', 'first_name', 'last_name', 'username', 'email', 'password', 'confirm_password', 'phone_number')
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'first_name': {'required': False},
+            'last_name': {'required': False}
+        }
 
     def validate_email(self, email):
         if not email.endswith('@gmail.com') or email.count('@') != 1:
@@ -29,20 +31,31 @@ class RegisterSerializers(serializers.ModelSerializer):
     def validate(self, attrs):
         password = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
+
         if password != confirm_password:
             raise serializers.ValidationError('Passwords do not match.')
+
         try:
             validate_password(password=password)
         except ValidationError as e:
             raise serializers.ValidationError(e)
+
         return attrs
 
     def create(self, validated_data):
         validated_data.pop('confirm_password', None)
-        password = validated_data.get('password')
         user = UserModel.objects.create_user(**validated_data)
-        user.set_password(password)
+        user.is_active = False
         user.save()
+
+        verification_code = get_random_verification_code(user.email)
+        VerificationModel.objects.create(user=user, code=verification_code)
+
+        sms_sender(
+            to_number=user.phone_number,
+            message_body=f"Your verification code is: {verification_code}"
+        )
+
         return user
 
     def update(self, instance, validated_data):
@@ -76,7 +89,6 @@ class VerificationSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.ModelSerializer):
     email_or_username = serializers.CharField(max_length=255)
     password = serializers.CharField(max_length=128)
-    error_messages = 'Email or username or password are required fields'
 
     class Meta:
         model = UserModel
@@ -91,12 +103,12 @@ class LoginSerializer(serializers.ModelSerializer):
             else:
                 user = UserModel.objects.get(username=email_or_username)
         except UserModel.DoesNotExist:
-            raise serializers.ValidationError(self.error_messages)
+            raise serializers.ValidationError('Email or username or password are required fields')
 
         authenticated_user = authenticate(username=user.username, password=attrs.get('password'))
 
         if not authenticated_user:
-            raise serializers.ValidationError(self.error_messages)
+            raise serializers.ValidationError('Email or username or password are required fields')
 
         attrs['user'] = user
         return attrs
