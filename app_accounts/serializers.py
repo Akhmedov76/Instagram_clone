@@ -21,6 +21,11 @@ class RegisterSerializers(serializers.ModelSerializer):
                         'last_name': {'required': False}
                         }
 
+    def validate_email(self, email):
+        if not email.endswith('@gmail.com') or email.count('@') != 1:
+            raise serializers.ValidationError('Invalid email address.')
+        return email
+
     def validate(self, attrs):
         password = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
@@ -64,21 +69,21 @@ class VerificationSerializer(serializers.ModelSerializer):
         if verification.created_at + timezone.timedelta(minutes=5) < timezone.now():
             verification.delete()
             raise serializers.ValidationError('Verification code has expired.')
+        attrs['verification'] = verification
         return attrs
 
 
 class LoginSerializer(serializers.ModelSerializer):
-    email_or_username = serializers.CharField(max_length=250)
-    password = serializers.CharField(max_length=50)
-    error_messages = {'email': ['Invalid email or username.'], 'password': ['Invalid password.']}
+    email_or_username = serializers.CharField(max_length=255)
+    password = serializers.CharField(max_length=128)
+    error_messages = 'Email or username or password are required fields'
 
     class Meta:
         model = UserModel
-        fields = ('email_or_username', 'password')
+        fields = ('email_or_username', 'password',)
 
     def validate(self, attrs):
         email_or_username = attrs.get('email_or_username')
-        password = attrs.get('password')
 
         try:
             if email_or_username.endswith('@gmail.com'):
@@ -86,11 +91,12 @@ class LoginSerializer(serializers.ModelSerializer):
             else:
                 user = UserModel.objects.get(username=email_or_username)
         except UserModel.DoesNotExist:
-            raise ValidationError(self.error_messages)
+            raise serializers.ValidationError(self.error_messages)
 
-        authenticated_user = authenticate(username=user.username, password=password)
+        authenticated_user = authenticate(username=user.username, password=attrs.get('password'))
 
         if not authenticated_user:
-            raise ValidationError(self.error_messages)
+            raise serializers.ValidationError(self.error_messages)
 
+        attrs['user'] = user
         return attrs
