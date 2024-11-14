@@ -10,6 +10,7 @@ class VerificationModel(models.Model):
     user = models.OneToOneField(UserModel, on_delete=models.CASCADE, related_name='verification')
     code = models.CharField(max_length=5)
     verified = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

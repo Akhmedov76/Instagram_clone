@@ -1,10 +1,11 @@
+from django.utils import timezone
+
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-from djoser.serializers import UserCreateSerializer, UserSerializer
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError
 
-from app_accounts.models import UserModel
+from app_accounts.models import UserModel, VerificationModel
 
 User = get_user_model()
 
@@ -46,13 +47,20 @@ class RegisterSerializers(serializers.ModelSerializer):
         return instance
 
 
-class CustomUserCreateSerializer(UserCreateSerializer):
-    class Meta(UserCreateSerializer.Meta):
-        model = User
-        fields = ('id', 'username', 'email', 'password')
+class VerificationSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(max_length=4)
 
+    class Meta:
+        model = VerificationModel
+        fields = ('id', 'email', 'code')
 
-class CustomUserSerializer(UserSerializer):
-    class Meta(UserSerializer.Meta):
-        model = User
-        fields = ('id', 'username', 'email')
+    def validate(self, attrs):
+        try:
+            verification = VerificationModel.objects.get(user__email=attrs['email'], code=attrs['code'])
+        except VerificationModel.DoesNotExist:
+            raise ValidationError("Invalid verification code.")
+
+        if verification.created_at + timezone.timedelta(minutes=5) < timezone.now():
+            verification.delete()
+            raise serializers.ValidationError('Verification code has expired.')
