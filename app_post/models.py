@@ -3,20 +3,20 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 
-class Post(models.Model):
+class PostModel(models.Model):
     title = models.CharField(max_length=255)
     image = models.ImageField(upload_to='posts/', blank=True, null=True)
     caption = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  # Foydalanuvchi kim post qoldirganini bilish
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.title
 
 
-class Comment(models.Model):
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
+class CommentModel(models.Model):
+    post = models.ForeignKey(PostModel, on_delete=models.CASCADE, related_name='comments')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     text = models.TextField()
     created_at = models.DateTimeField(default=timezone.now)
@@ -25,8 +25,8 @@ class Comment(models.Model):
         return f"Comment by {self.user.username} on {self.post.title}"
 
 
-class Like(models.Model):
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='likes')
+class LikeModel(models.Model):
+    post = models.ForeignKey(PostModel, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
