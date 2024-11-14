@@ -22,4 +22,21 @@ class RegistrationView(generics.CreateAPIView):
         return user
 
 
+class LoginView(APIView):
+    serializer_class = LoginSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        refresh = RefreshToken.for_user(user=serializer.validated_data['user'])
+
+        response = {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "message": "Logged in successfully",
+        }
+
+        return Response(response, status=status.HTTP_200_OK)
+
+
 
