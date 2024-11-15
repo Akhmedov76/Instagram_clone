@@ -75,3 +75,46 @@ class VerificationView(APIView):
 
         verification.delete()
         return Response({"message": "User verified successfully"})
+        
+class FollowView(generics.GenericAPIView):
+    serializer_class = FollowSerializer
+    queryset = FollowerModel.objects.all()
+    permission_classes = [IsAuthenticated]
+    pagination_class = CustomPagination
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        follower = serializer.validated_data['follower']
+        following = request.user
+        follow = FollowerModel.objects.filter(follower=follower, user=following)
+        response = {
+            'success': True,
+            'message': {
+                'follower': follower.username,
+                'following': following.username,
+                'action': 'follow' if not follow.exists() else 'unfollow'
+            }
+
+        }
+        if follow.exists():
+            if follow.exists():
+                follow.delete()
+                return Response(response, status=status.HTTP_200_OK)
+        FollowerModel.objects.create(follower=follower, user=following)
+        return Response(response, status=status.HTTP_201_CREATED)
+
+    def get(self, request, *args, **kwargs):
+        follower = request.user
+        following = FollowerModel.objects.filter(follower=follower)
+        follow = FollowerModel.objects.filter(user=follower)
+        serializer = self.get_serializer(following, many=True)
+        response = {
+            'success': True,
+            'message': {
+                'follower': follower.username,
+                'following': [follow.user.username for follow in following],
+                'follow': [follow.follower.username for follow in follow]
+            }
+        }
+        return Response(response, status=status.HTTP_200_OK)
