@@ -5,8 +5,8 @@ from app_post.views import *
 
 router = DefaultRouter()
 
-router.register('post', post_views.PostView, basename='posts')
-router.register('comment', post_views.CommentView, basename='comments')
+router.register('post', PostCreateView.PostView, basename='posts')
+router.register('comment', CommentCreateAPIView.CommentView, basename='comments')
 
 urlpatterns = [
     path('register/', RegistrationView.as_view(), name='register'),
