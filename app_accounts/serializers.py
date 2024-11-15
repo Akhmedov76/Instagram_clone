@@ -112,3 +112,15 @@ class LoginSerializer(serializers.ModelSerializer):
 
         attrs['user'] = user
         return attrs
+
+class FollowSerializer(serializers.ModelSerializer):
+    follower = serializers.PrimaryKeyRelatedField(queryset=UserModel.objects.all(), required=True)
+
+    class Meta:
+        model = FollowerModel
+        fields = ['follower']
+
+    def validate(self, data):
+        if self.context['request'].user == data.get('follower'):
+            raise serializers.ValidationError('You cannot follow yourself.')
+        return data
