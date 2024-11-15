@@ -23,3 +23,14 @@ class VerificationModel(models.Model):
         verbose_name_plural = 'verifications'
         ordering = ['-created_at']
         unique_together = ('user', 'code')
+
+class FollowerModel(models.Model):
+    user = models.ForeignKey(UserModel, on_delete=models.CASCADE, related_name='follower')
+    follower = models.ForeignKey(UserModel, on_delete=models.CASCADE, related_name='following')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'followers'
+        verbose_name = 'Follower'
+        verbose_name_plural = 'Followers'
+        unique_together = ('user', 'follower')
