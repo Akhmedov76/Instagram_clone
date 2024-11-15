@@ -34,13 +34,29 @@ class PostSerializers(serializers.ModelSerializer):
         fields = ['id', 'title', 'image', 'caption', 'created_at', 'updated_at', 'user', 'comments']
         read_only_fields = ['created_at', 'updated_at', 'user']
 
+class SavePostSerializer(serializers.ModelSerializer):
+    post = serializers.PrimaryKeyRelatedField(queryset=PostModel.objects.all())
 
-class PostCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PostModel
-        fields = ['title', 'image', 'caption']
+        model = SavePostModel
+        fields = ['post']
 
-    def create(self, validated_data):
-        author = validated_data.pop('author')
-        post = PostModel.objects.create(author=author, **validated_data)
-        return post
+    def validate(self, data):
+        user = self.context['request'].user
+        if SavePostModel.objects.filter(user=user, post=data['post']).exists():
+            raise serializers.ValidationError('Post already saved')
+        return data
+
+
+class LikeCommentSerializer(serializers.ModelSerializer):
+    comment = serializers.PrimaryKeyRelatedField(queryset=CommentModel.objects.all())
+
+    class Meta:
+        model = LikeCommentModel
+        fields = ['comment']
+
+
+class StoryModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StoryModel
+        fields = '__all__'
